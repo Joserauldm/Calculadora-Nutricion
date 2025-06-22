@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planificador de Nutrición Interactivo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" xintegrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+        }
+        .progress-bar-bg {
+            background-color: #e5e7eb; /* gray-200 */
+        }
+        .progress-bar-fill {
+            transition: width 0.3s ease-in-out;
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.75rem; /* rounded-xl */
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ESTILOS PARA LA IMPRESIÓN Y PDF */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            body {
+                background-color: white !important;
+                color: black !important;
+            }
+            .card {
+                box-shadow: none !important;
+                border: 1px solid #e5e7eb !important;
+                /* Evita que las tarjetas de comida se corten entre páginas */
+                page-break-inside: avoid !important;
+            }
+            #exportable-area {
+                width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            /* Asegura que el texto sea legible */
+            * {
+                color: #000 !important;
+                background-color: transparent !important;
+            }
+            .text-slate-600 { color: #475569 !important; }
+            .font-semibold { font-weight: 600 !important; }
+        }
+        .print-only {
+            display: none;
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <div id="exportable-area" class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-6">
+            <h1 class="text-4xl font-bold text-slate-900">Planificador de Nutrición</h1>
+            <p class="text-slate-600 mt-2">Define tus objetivos, añade alimentos y nosotros hacemos los cálculos por ti.</p>
+        </header>
+
+        <!-- Panel de Objetivos Horizontal -->
+        <div class="card p-4 mb-8">
+            <div class="flex items-center justify-between">
+                 <h2 class="text-xl font-semibold">🎯 Mis Objetivos</h2>
+                 <button id="export-pdf-btn" class="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 transition-colors text-sm font-medium no-print">
+                    ↓ Exportar a PDF
+                </button>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                <div>
+                    <label for="target-calories" class="block text-sm font-medium text-slate-700 no-print">Calorías (kcal)</label>
+                    <span class="print-only text-sm font-medium text-slate-700">Calorías (kcal)</span>
+                    <input type="number" id="target-calories" value="2000" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm no-print">
+                    <p class="print-only font-bold text-lg" id="print-target-calories">2000</p>
+                </div>
+                <div>
+                    <label for="target-protein" class="block text-sm font-medium text-slate-700 no-print">Proteínas (g)</label>
+                    <span class="print-only text-sm font-medium text-slate-700">Proteínas (g)</span>
+                    <input type="number" id="target-protein" value="150" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm no-print">
+                     <p class="print-only font-bold text-lg" id="print-target-protein">150</p>
+                </div>
+                <div>
+                    <label for="target-carbs" class="block text-sm font-medium text-slate-700 no-print">Carbohidratos (g)</label>
+                    <span class="print-only text-sm font-medium text-slate-700">Carbohidratos (g)</span>
+                    <input type="number" id="target-carbs" value="200" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm no-print">
+                    <p class="print-only font-bold text-lg" id="print-target-carbs">200</p>
+                </div>
+                <div>
+                    <label for="target-fats" class="block text-sm font-medium text-slate-700 no-print">Grasas (g)</label>
+                     <span class="print-only text-sm font-medium text-slate-700">Grasas (g)</span>
+                    <input type="number" id="target-fats" value="60" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm no-print">
+                    <p class="print-only font-bold text-lg" id="print-target-fats">60</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contenedor de Comidas -->
+        <section id="meals-container" class="space-y-8">
+            <!-- Las tarjetas de comida se generan aquí -->
+        </section>
+
+        <!-- Botón para añadir más comidas -->
+        <div class="text-center my-8 no-print">
+            <button id="add-meal-btn" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 transition-colors font-semibold">
+                + Añadir Otra Comida
+            </button>
+        </div>
+
+        <!-- Panel de Resumen Diario Horizontal -->
+        <div id="summary-panel" class="card p-6 mt-8">
+            <h2 class="text-2xl font-semibold mb-4 text-center">📊 Resumen Diario</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <!-- Calorías -->
+                <div>
+                    <div class="flex justify-between items-baseline mb-1">
+                        <span class="text-base font-medium text-slate-700">Calorías</span>
+                        <span id="summary-calories-text" class="text-sm font-medium text-slate-600">0 / 2000 kcal</span>
+                    </div>
+                    <div class="w-full progress-bar-bg rounded-full h-2.5">
+                        <div id="summary-calories-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+                <!-- Proteínas -->
+                <div>
+                    <div class="flex justify-between items-baseline mb-1">
+                        <span class="text-base font-medium text-slate-700">Proteínas</span>
+                        <span id="summary-protein-text" class="text-sm font-medium text-slate-600">0 / 150 g</span>
+                    </div>
+                    <div class="w-full progress-bar-bg rounded-full h-2.5">
+                        <div id="summary-protein-bar" class="bg-green-600 h-2.5 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+                <!-- Carbohidratos -->
+                <div>
+                    <div class="flex justify-between items-baseline mb-1">
+                        <span class="text-base font-medium text-slate-700">Carbohidratos</span>
+                        <span id="summary-carbs-text" class="text-sm font-medium text-slate-600">0 / 200 g</span>
+                    </div>
+                    <div class="w-full progress-bar-bg rounded-full h-2.5">
+                        <div id="summary-carbs-bar" class="bg-orange-500 h-2.5 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+                <!-- Grasas -->
+                <div>
+                    <div class="flex justify-between items-baseline mb-1">
+                        <span class="text-base font-medium text-slate-700">Grasas</span>
+                        <span id="summary-fats-text" class="text-sm font-medium text-slate-600">0 / 60 g</span>
+                    </div>
+                    <div class="w-full progress-bar-bg rounded-full h-2.5">
+                        <div id="summary-fats-bar" class="bg-red-500 h-2.5 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // --- BASE DE DATOS DE ALIMENTOS ---
+        const foodDatabase = [
+            { id: 1, name: 'Pechuga de Pollo', category: 'Carnes', macros: { calories: 165, protein: 31, carbs: 0, fats: 3.6 }, imageUrl: 'https://images.unsplash.com/photo-1606728035253-49e8a23146de?q=80&w=400&auto=format&fit=crop' },
+            { id: 2, name: 'Salmón', category: 'Pescados', macros: { calories: 208, protein: 20, carbs: 0, fats: 13 }, imageUrl: 'https://images.unsplash.com/photo-1599043513900-ed6fe01d3833?q=80&w=400&auto=format&fit=crop' },
+            { id: 3, name: 'Arroz Blanco', category: 'Cereales', macros: { calories: 130, protein: 2.7, carbs: 28, fats: 0.3 }, imageUrl: 'https://images.unsplash.com/photo-1599351549026-e4a50971b305?q=80&w=400&auto=format&fit=crop' },
+            { id: 4, name: 'Brócoli', category: 'Verduras', macros: { calories: 55, protein: 3.7, carbs: 11, fats: 0.6 }, imageUrl: 'https://images.unsplash.com/photo-1628773912690-50414f0440f3?q=80&w=400&auto=format&fit=crop' },
+            { id: 5, name: 'Huevo', category: 'Huevos', macros: { calories: 155, protein: 13, carbs: 1.1, fats: 11 }, imageUrl: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?q=80&w=400&auto=format&fit=crop' },
+            { id: 6, name: 'Aceite de Oliva', category: 'Aceites', macros: { calories: 884, protein: 0, carbs: 0, fats: 100 }, imageUrl: 'https://images.unsplash.com/photo-1626186461533-36fa3528b184?q=80&w=400&auto=format&fit=crop' },
+            { id: 7, name: 'Lentejas', category: 'Legumbres', macros: { calories: 116, protein: 9, carbs: 20, fats: 0.4 }, imageUrl: 'https://images.unsplash.com/photo-1587590227264-0ac64ce63ce8?q=80&w=400&auto=format&fit=crop' },
+            { id: 8, name: 'Yogur Griego', category: 'Lácteos', macros: { calories: 59, protein: 10, carbs: 3.6, fats: 0.4 }, imageUrl: 'https://images.unsplash.com/photo-1562119432-519248d6415d?q=80&w=400&auto=format&fit=crop' },
+            { id: 9, name: 'Almendras', category: 'Frutos Secos', macros: { calories: 579, protein: 21, carbs: 22, fats: 49 }, imageUrl: 'https://images.unsplash.com/photo-1633513298096-0371a396e5b4?q=80&w=400&auto=format&fit=crop' },
+            { id: 10, name: 'Manzana', category: 'Frutas', macros: { calories: 52, protein: 0.3, carbs: 14, fats: 0.2 }, imageUrl: 'https://images.unsplash.com/photo-1560806887-1e4cd0b69665?q=80&w=400&auto=format&fit=crop' },
+            { id: 11, name: 'Patata', category: 'Verduras', macros: { calories: 77, protein: 2, carbs: 17, fats: 0.1 }, imageUrl: 'https://images.unsplash.com/photo-1590165482098-0f0424345a93?q=80&w=400&auto=format&fit=crop' },
+            { id: 12, name: 'Ternera Magra', category: 'Carnes', macros: { calories: 250, protein: 26, carbs: 0, fats: 15 }, imageUrl: 'https://images.unsplash.com/photo-1615937691194-97dbd3f3dc29?q=80&w=400&auto=format&fit=crop' }
+        ];
+
+        const categories = [...new Set(foodDatabase.map(food => food.category))].sort();
+        let state = {
+            targets: { calories: 2000, protein: 150, carbs: 200, fats: 60 },
+            meals: [],
+        };
+
+        const mealsContainer = document.getElementById('meals-container');
+        const addMealBtn = document.getElementById('add-meal-btn');
+        const exportPdfBtn = document.getElementById('export-pdf-btn');
+        const targetInputs = {
+            calories: { input: document.getElementById('target-calories'), print: document.getElementById('print-target-calories')},
+            protein: { input: document.getElementById('target-protein'), print: document.getElementById('print-target-protein')},
+            carbs: { input: document.getElementById('target-carbs'), print: document.getElementById('print-target-carbs')},
+            fats: { input: document.getElementById('target-fats'), print: document.getElementById('print-target-fats')},
+        };
+        const summary = {
+            calories: { text: document.getElementById('summary-calories-text'), bar: document.getElementById('summary-calories-bar') },
+            protein: { text: document.getElementById('summary-protein-text'), bar: document.getElementById('summary-protein-bar') },
+            carbs: { text: document.getElementById('summary-carbs-text'), bar: document.getElementById('summary-carbs-bar') },
+            fats: { text: document.getElementById('summary-fats-text'), bar: document.getElementById('summary-fats-bar') },
+        };
+
+        function createMealHTML(meal, index) {
+            const foodRows = meal.foods.map((foodItem) => createFoodRowHTML(foodItem, index)).join('');
+            return `
+                <div class="flex justify-between items-center border-b pb-3 mb-4">
+                    <h3 class="text-xl font-semibold">Comida ${index + 1}</h3>
+                    <button data-meal-index="${index}" class="add-food-btn bg-indigo-500 text-white px-3 py-1 rounded-md hover:bg-indigo-600 transition-colors text-sm font-medium no-print">
+                        + Añadir Alimento
+                    </button>
+                </div>
+                <div class="food-list space-y-4">${foodRows}</div>
+                <div class="meal-summary mt-6 pt-4 border-t-2 border-dashed"></div>
+                <div class="mt-4">
+                    <label class="text-sm font-medium text-slate-600 no-print">Notas:</label>
+                    <p class="print-only text-sm font-medium text-slate-700">Notas:</p>
+                    <textarea data-meal-index="${index}" class="notes-input mt-1 w-full rounded-md border-slate-300 text-sm no-print" rows="2" placeholder="Añadir notas para esta comida...">${meal.notes}</textarea>
+                    <p class="print-only notes-print-view text-slate-800 italic mt-1" data-meal-index="${index}">${meal.notes || 'Sin notas.'}</p>
+                </div>
+            `;
+        }
+
+        function createFoodRowHTML(foodItem, mealIndex) {
+            const foodData = foodDatabase.find(f => f.id === foodItem.foodId);
+            if (!foodData) return '';
+
+            const categoryOptions = categories.map(cat => `<option value="${cat}" ${foodData.category === cat ? 'selected' : ''}>${cat}</option>`).join('');
+            const foodOptions = foodDatabase.filter(f => f.category === foodData.category).map(f => `<option value="${f.id}" ${f.id === foodData.id ? 'selected' : ''}>${f.name}</option>`).join('');
+            const calculatedMacros = calculateMacros(foodData, foodItem.quantity);
+
+            return `
+                <div class="food-item p-3 border rounded-lg fade-in" data-item-id="${foodItem.id}">
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                        <div class="md:col-span-1">
+                            <img src="${foodData.imageUrl}" class="w-16 h-16 object-cover rounded-md mx-auto" alt="Imagen de ${foodData.name}" onerror="this.onerror=null;this.src='https://placehold.co/64x64/e2e8f0/64748b?text=??';">
+                        </div>
+                        <div class="md:col-span-6">
+                            <!-- Vista para la pantalla (interactiva) -->
+                            <div class="no-print">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="text-xs font-medium">Categoría</label>
+                                        <select data-meal-index="${mealIndex}" data-item-id="${foodItem.id}" class="food-category-select mt-1 w-full rounded-md border-slate-300 text-sm">${categoryOptions}</select>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-medium">Alimento</label>
+                                        <select data-meal-index="${mealIndex}" data-item-id="${foodItem.id}" class="food-select mt-1 w-full rounded-md border-slate-300 text-sm">${foodOptions}</select>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <label class="text-xs font-medium">Cantidad (g)</label>
+                                    <input type="number" value="${foodItem.quantity}" data-meal-index="${mealIndex}" data-item-id="${foodItem.id}" class="quantity-input mt-1 w-full rounded-md border-slate-300 text-sm" min="0">
+                                </div>
+                            </div>
+                             <!-- Vista para el PDF (estática) -->
+                            <div class="print-only">
+                                <p class="text-lg font-semibold">${foodData.name}</p>
+                                <p class="text-sm text-slate-600">${foodItem.quantity} g</p>
+                            </div>
+                        </div>
+                        <div class="md:col-span-5 text-sm p-3 bg-slate-50 rounded-lg">
+                           <div class="flex items-center justify-between"><span class="flex items-center"><span class="inline-block w-2 h-2 rounded-full bg-blue-500 mr-2"></span>Calorías</span> <span class="font-semibold">${calculatedMacros.calories.toFixed(0)} kcal</span></div>
+                           <div class="flex items-center justify-between mt-1"><span class="flex items-center"><span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-2"></span>Proteínas</span> <span class="font-semibold">${calculatedMacros.protein.toFixed(1)} g</span></div>
+                           <div class="flex items-center justify-between mt-1"><span class="flex items-center"><span class="inline-block w-2 h-2 rounded-full bg-orange-500 mr-2"></span>Carbs</span> <span class="font-semibold">${calculatedMacros.carbs.toFixed(1)} g</span></div>
+                           <div class="flex items-center justify-between mt-1"><span class="flex items-center"><span class="inline-block w-2 h-2 rounded-full bg-red-500 mr-2"></span>Grasas</span> <span class="font-semibold">${calculatedMacros.fats.toFixed(1)} g</span></div>
+                        </div>
+                    </div>
+                    <div class="text-right mt-2 no-print">
+                         <button data-meal-index="${mealIndex}" data-item-id="${foodItem.id}" class="delete-food-btn text-red-500 hover:text-red-700 text-xs font-semibold">ELIMINAR</button>
+                    </div>
+                </div>`;
+        }
+        
+        // --- Functions for events, rendering, and calculations ---
+        
+        function initializeMeals(count) {
+            state.meals = [];
+            for (let i = 0; i < count; i++) {
+                state.meals.push({ id: `meal-${Date.now() + i}`, foods: [], notes: '' });
+            }
+            renderAllMeals();
+            updateAllCalculations();
+        }
+        
+        function addNewMeal() {
+            const mealIndex = state.meals.length;
+            const newMeal = { id: `meal-${Date.now()}`, foods: [], notes: '' };
+            state.meals.push(newMeal);
+
+            const mealCard = document.createElement('div');
+            mealCard.className = 'card p-6 fade-in';
+            mealCard.setAttribute('data-meal-id', newMeal.id);
+            mealCard.innerHTML = createMealHTML(newMeal, mealIndex);
+            mealsContainer.appendChild(mealCard);
+            addEventListenersToMeal(mealCard);
+        }
+
+        function renderAllMeals() {
+            mealsContainer.innerHTML = '';
+            state.meals.forEach((meal, index) => {
+                const mealCard = document.createElement('div');
+                mealCard.className = 'card p-6 fade-in';
+                mealCard.setAttribute('data-meal-id', meal.id);
+                mealCard.innerHTML = createMealHTML(meal, index);
+                mealsContainer.appendChild(mealCard);
+                addEventListenersToMeal(mealCard);
+            });
+        }
+        
+        function addEventListenersToMeal(mealCard) {
+            mealCard.querySelector('.add-food-btn').addEventListener('click', handleAddFood);
+            mealCard.querySelectorAll('.food-category-select').forEach(sel => sel.addEventListener('change', handleCategoryChange));
+            mealCard.querySelectorAll('.food-select').forEach(sel => sel.addEventListener('change', handleFoodChange));
+            mealCard.querySelectorAll('.quantity-input').forEach(inp => inp.addEventListener('change', handleQuantityChange));
+            mealCard.querySelectorAll('.delete-food-btn').forEach(btn => btn.addEventListener('click', handleDeleteFood));
+            mealCard.querySelector('.notes-input').addEventListener('input', handleNotesChange);
+        }
+        
+        function handleAddFood(e) {
+            const mealIndex = parseInt(e.target.dataset.mealIndex);
+            const defaultFood = foodDatabase[0];
+            const newFoodItem = { id: `item-${Date.now()}`, foodId: defaultFood.id, quantity: 100 };
+            state.meals[mealIndex].foods.push(newFoodItem);
+            rerenderMeal(mealIndex);
+        }
+
+        function handleCategoryChange(e) {
+            const mealIndex = parseInt(e.target.dataset.mealIndex);
+            const itemId = e.target.dataset.itemId;
+            const newCategory = e.target.value;
+            const foodItem = state.meals[mealIndex].foods.find(f => f.id === itemId);
+            const firstFoodOfCategory = foodDatabase.find(f => f.category === newCategory);
+            if (foodItem && firstFoodOfCategory) {
+                foodItem.foodId = firstFoodOfCategory.id;
+                rerenderMeal(mealIndex);
+            }
+        }
+
+        function handleFoodChange(e) {
+            const mealIndex = parseInt(e.target.dataset.mealIndex);
+            const itemId = e.target.dataset.itemId;
+            const newFoodId = parseInt(e.target.value);
+            const foodItem = state.meals[mealIndex].foods.find(f => f.id === itemId);
+            if (foodItem) {
+                foodItem.foodId = newFoodId;
+                rerenderMeal(mealIndex);
+            }
+        }
+
+        function handleQuantityChange(e) {
+            const mealIndex = parseInt(e.target.dataset.mealIndex);
+            const itemId = e.target.dataset.itemId;
+            const newQuantity = parseFloat(e.target.value) || 0;
+            const foodItem = state.meals[mealIndex].foods.find(f => f.id === itemId);
+            if (foodItem) {
+                foodItem.quantity = newQuantity;
+                rerenderMeal(mealIndex);
+            }
+        }
+
+        function handleDeleteFood(e) {
+            const mealIndex = parseInt(e.target.dataset.mealIndex);
+            const itemId = e.target.dataset.itemId;
+            state.meals[mealIndex].foods = state.meals[mealIndex].foods.filter(f => f.id !== itemId);
+            rerenderMeal(mealIndex);
+        }
+        
+        function handleNotesChange(e) {
+            const mealIndex = parseInt(e.target.dataset.mealIndex);
+            state.meals[mealIndex].notes = e.target.value;
+            // Update the print view as well
+            const mealCard = e.target.closest('.card');
+            const notesPrintView = mealCard.querySelector(`.notes-print-view[data-meal-index="${mealIndex}"]`);
+            if(notesPrintView) {
+                notesPrintView.textContent = e.target.value || 'Sin notas.';
+            }
+        }
+
+        function rerenderMeal(mealIndex) {
+            const meal = state.meals[mealIndex];
+            const mealCard = mealsContainer.querySelector(`[data-meal-id="${meal.id}"]`);
+            if (meal && mealCard) {
+                const foodListContainer = mealCard.querySelector('.food-list');
+                foodListContainer.innerHTML = meal.foods.map(item => createFoodRowHTML(item, mealIndex)).join('');
+                updateMealSummary(mealIndex);
+                addEventListenersToMeal(mealCard);
+            }
+            updateDailySummary();
+        }
+
+        function calculateMacros(foodData, quantity) {
+            const factor = quantity / 100;
+            return {
+                calories: (foodData.macros.calories || 0) * factor,
+                protein: (foodData.macros.protein || 0) * factor,
+                carbs: (foodData.macros.carbs || 0) * factor,
+                fats: (foodData.macros.fats || 0) * factor,
+            };
+        }
+
+        function updateAllCalculations() {
+            state.meals.forEach((_, index) => updateMealSummary(index));
+            updateDailySummary();
+        }
+
+        function updateMealSummary(mealIndex) {
+            const meal = state.meals[mealIndex];
+            const mealCard = mealsContainer.querySelector(`[data-meal-id="${meal.id}"]`);
+            if (!meal || !mealCard) return;
+
+            const summaryContainer = mealCard.querySelector('.meal-summary');
+            const totals = meal.foods.reduce((acc, item) => {
+                const foodData = foodDatabase.find(f => f.id === item.foodId);
+                if (foodData) {
+                    const itemMacros = calculateMacros(foodData, item.quantity);
+                    acc.calories += itemMacros.calories;
+                    acc.protein += itemMacros.protein;
+                    acc.carbs += itemMacros.carbs;
+                    acc.fats += itemMacros.fats;
+                }
+                return acc;
+            }, { calories: 0, protein: 0, carbs: 0, fats: 0 });
+            
+            summaryContainer.innerHTML = `
+                <div class="flex justify-end space-x-4 text-sm font-semibold text-slate-700">
+                    <span>Total Comida:</span>
+                    <span class="text-blue-600">${totals.calories.toFixed(0)} kcal</span>
+                    <span class="text-green-600">${totals.protein.toFixed(1)}g P</span>
+                    <span class="text-orange-500">${totals.carbs.toFixed(1)}g C</span>
+                    <span class="text-red-500">${totals.fats.toFixed(1)}g F</span>
+                </div>`;
+        }
+
+        function updateDailySummary() {
+            const dailyTotals = state.meals.reduce((acc, meal) => {
+                meal.foods.forEach(item => {
+                    const foodData = foodDatabase.find(f => f.id === item.foodId);
+                    if (foodData) {
+                        const itemMacros = calculateMacros(foodData, item.quantity);
+                        acc.calories += itemMacros.calories;
+                        acc.protein += itemMacros.protein;
+                        acc.carbs += itemMacros.carbs;
+                        acc.fats += itemMacros.fats;
+                    }
+                });
+                return acc;
+            }, { calories: 0, protein: 0, carbs: 0, fats: 0 });
+
+            const targets = state.targets;
+            summary.calories.text.textContent = `${dailyTotals.calories.toFixed(0)} / ${targets.calories} kcal`;
+            summary.calories.bar.style.width = `${Math.min(100, (dailyTotals.calories / targets.calories) * 100)}%`;
+            summary.protein.text.textContent = `${dailyTotals.protein.toFixed(1)} / ${targets.protein} g`;
+            summary.protein.bar.style.width = `${Math.min(100, (dailyTotals.protein / targets.protein) * 100)}%`;
+            summary.carbs.text.textContent = `${dailyTotals.carbs.toFixed(1)} / ${targets.carbs} g`;
+            summary.carbs.bar.style.width = `${Math.min(100, (dailyTotals.carbs / targets.carbs) * 100)}%`;
+            summary.fats.text.textContent = `${dailyTotals.fats.toFixed(1)} / ${targets.fats} g`;
+            summary.fats.bar.style.width = `${Math.min(100, (dailyTotals.fats / targets.fats) * 100)}%`;
+        }
+        
+        function updatePrintViews() {
+            Object.keys(targetInputs).forEach(key => {
+                targetInputs[key].print.textContent = state.targets[key];
+            });
+        }
+
+        function exportToPDF() {
+            const element = document.getElementById('exportable-area');
+            const opt = {
+                margin:       0.5,
+                filename:     'plan_nutricional.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save();
+        }
+
+        addMealBtn.addEventListener('click', addNewMeal);
+        exportPdfBtn.addEventListener('click', exportToPDF);
+        Object.keys(targetInputs).forEach(key => {
+            targetInputs[key].input.addEventListener('input', (e) => {
+                state.targets[key] = parseFloat(e.target.value) || 0;
+                targetInputs[key].print.textContent = e.target.value; // Update print view
+                updateDailySummary();
+            });
+        });
+        
+        function init() {
+            Object.keys(targetInputs).forEach(key => {
+                const value = parseFloat(targetInputs[key].input.value) || 0;
+                state.targets[key] = value;
+                targetInputs[key].print.textContent = value;
+            });
+            initializeMeals(3);
+        }
+
+        init();
+    </script>
+</body>
+</html>
